@@ -17,45 +17,57 @@
       background: #1a1a1a;
       color: #00ff00;
       min-height: 100vh;
-      padding: 10px;
+      padding: 5px;
       overflow-x: hidden;
-    }
-
-    h1 {
-      text-align: center;
-      margin: 10px 0;
-      font-size: 1.5rem;
-      color: #00ff00;
-      text-shadow: 0 0 10px #00ff00;
-      letter-spacing: 2px;
-    }
-
-    .status {
-      text-align: center;
-      margin: 10px 0;
-      font-size: 14px;
-      padding: 8px;
-      border: 2px solid #333;
-      background: #000;
-      border-radius: 4px;
-    }
-
-    .status.active {
-      color: #00ff00;
-      border-color: #00ff00;
-      box-shadow: 0 0 15px rgba(0,255,0,0.3);
-    }
-
-    .status.inactive {
-      color: #ff0000;
-      border-color: #333;
     }
 
     .controls {
       display: flex;
-      justify-content: center;
+      justify-content: space-between;
+      align-items: center;
       gap: 10px;
-      margin: 10px 0;
+      margin: 5px 0;
+      padding: 8px;
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 4px;
+      flex-wrap: wrap;
+    }
+
+    .scope-title {
+      font-size: 0.9rem;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      letter-spacing: 1px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .main-toggle {
+      padding: 10px 20px;
+      font-size: 14px;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      border: 2px solid #00ff00;
+      background: #000;
+      color: #00ff00;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      touch-action: manipulation;
+      transition: all 0.2s;
+      box-shadow: 0 0 8px rgba(0,255,0,0.3);
+    }
+
+    .main-toggle:active {
+      transform: scale(0.95);
+    }
+
+    .main-toggle.active {
+      background: #00ff00;
+      color: #000;
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0,255,0,0.6);
     }
 
     button {
@@ -77,38 +89,32 @@
       color: #000;
     }
 
-    button:disabled {
-      border-color: #333;
-      color: #333;
-      cursor: not-allowed;
-    }
-
     .scope-panel {
       background: #2a2a2a;
       border: 2px solid #444;
-      border-radius: 6px;
-      padding: 10px;
-      margin: 10px 0;
+      border-radius: 4px;
+      padding: 6px;
+      margin: 5px 0;
     }
 
     .scope-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 6px;
       flex-wrap: wrap;
     }
 
     h2 {
-      font-size: 1rem;
+      font-size: 0.85rem;
       color: #00ff00;
       text-shadow: 0 0 5px #00ff00;
-      margin: 5px 0;
+      margin: 3px 0;
     }
 
     .knobs {
       display: flex;
-      gap: 15px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
@@ -116,15 +122,15 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 5px;
+      gap: 3px;
     }
 
     .knob {
-      width: 50px;
-      height: 50px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background: radial-gradient(circle at 35% 35%, #555, #222);
-      border: 3px solid #000;
+      border: 2px solid #000;
       position: relative;
       cursor: pointer;
       touch-action: none;
@@ -133,37 +139,37 @@
     .knob::after {
       content: '';
       position: absolute;
-      top: 5px;
+      top: 4px;
       left: 50%;
       transform: translateX(-50%);
-      width: 3px;
-      height: 15px;
+      width: 2px;
+      height: 12px;
       background: #00ff00;
       border-radius: 2px;
       box-shadow: 0 0 5px #00ff00;
     }
 
     .knob-label {
-      font-size: 9px;
+      font-size: 8px;
       color: #888;
       text-transform: uppercase;
     }
 
     .knob-value {
-      font-size: 10px;
+      font-size: 9px;
       color: #00ff00;
       font-weight: bold;
     }
 
     .toggle-btn {
-      padding: 6px 12px;
-      font-size: 11px;
+      padding: 4px 8px;
+      font-size: 10px;
       font-weight: bold;
       font-family: 'Courier New', monospace;
       border: 2px solid #00ff00;
       background: #000;
       color: #00ff00;
-      border-radius: 4px;
+      border-radius: 3px;
       cursor: pointer;
       text-transform: uppercase;
       touch-action: manipulation;
@@ -178,7 +184,7 @@
 
     canvas {
       width: 100%;
-      height: 200px;
+      height: 140px;
       display: block;
       background: #000;
       border: 2px solid #111;
@@ -187,32 +193,43 @@
     }
 
     .pitch-display {
-      margin-top: 10px;
-      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-top: 6px;
+      padding: 6px;
       background: #000;
       border: 2px solid #00ff00;
       border-radius: 4px;
       text-align: center;
     }
 
+    .pitch-info {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
     .pitch-note {
-      font-size: 2rem;
+      font-size: 1.3rem;
       color: #00ff00;
-      text-shadow: 0 0 10px #00ff00;
+      text-shadow: 0 0 8px #00ff00;
       font-weight: bold;
-      margin: 5px 0;
+      margin: 0;
     }
 
     .pitch-freq {
-      font-size: 1rem;
+      font-size: 0.85rem;
       color: #0f0;
-      margin: 3px 0;
+      margin: 0;
     }
 
     .pitch-cents {
-      font-size: 0.9rem;
+      font-size: 0.75rem;
       color: #ffff00;
-      margin: 3px 0;
+      margin: 0;
     }
 
     .pitch-cents.flat {
@@ -222,18 +239,119 @@
     .pitch-cents.sharp {
       color: #00ffff;
     }
+
+    /* Portrait mode: larger elements to fill space */
+    @media (orientation: portrait) {
+      canvas {
+        height: 180px;
+      }
+
+      .scope-panel {
+        padding: 10px;
+        margin: 8px 0;
+      }
+
+      .knob {
+        width: 60px;
+        height: 60px;
+        border: 3px solid #000;
+      }
+
+      .knob::after {
+        top: 6px;
+        width: 3px;
+        height: 18px;
+      }
+
+      .knob-label {
+        font-size: 10px;
+      }
+
+      .knob-value {
+        font-size: 11px;
+      }
+
+      .controls {
+        padding: 12px;
+        margin: 8px 0;
+      }
+
+      .scope-title {
+        font-size: 1.1rem;
+      }
+
+      .main-toggle {
+        padding: 14px 28px;
+        font-size: 16px;
+      }
+
+      h2 {
+        font-size: 1rem;
+      }
+
+      .pitch-note {
+        font-size: 1.8rem;
+      }
+
+      .pitch-freq {
+        font-size: 1rem;
+      }
+
+      .pitch-cents {
+        font-size: 0.9rem;
+      }
+
+      .pitch-info {
+        gap: 15px;
+      }
+
+      .scope-header {
+        margin-bottom: 10px;
+      }
+
+      .toggle-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+      }
+    }
+
+    /* Landscape mode: side-by-side layout */
+    @media (orientation: landscape) and (min-width: 600px) {
+      .controls {
+        flex-wrap: nowrap;
+      }
+
+      .scope-container {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+      }
+
+      .scope-panel {
+        flex: 1;
+        margin: 0 !important;
+      }
+
+      .pitch-info {
+        flex: 1;
+        justify-content: space-around;
+        max-width: 400px;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>◈ AUDIO SCOPE ◈</h1>
-  
-  <div class="status inactive" id="status">INACTIVE</div>
-
   <div class="controls">
-    <button id="startBtn">START</button>
-    <button id="stopBtn" disabled>STOP</button>
+    <div class="scope-title">◈ AUDIO SCOPE ◈</div>
+    <button class="main-toggle" id="toggleBtn">START</button>
+    <div class="pitch-info">
+      <div class="pitch-note" id="pitchNote">--</div>
+      <div class="pitch-freq" id="pitchFreq">--- Hz</div>
+      <div class="pitch-cents" id="pitchCents">--- cents</div>
+    </div>
   </div>
 
+  <div class="scope-container">
   <div class="scope-panel">
     <div class="scope-header">
       <h2>◆ OSCILLOSCOPE</h2>
@@ -266,11 +384,7 @@
       </div>
     </div>
     <canvas id="spectrum"></canvas>
-    <div class="pitch-display">
-      <div class="pitch-note" id="pitchNote">--</div>
-      <div class="pitch-freq" id="pitchFreq">--- Hz</div>
-      <div class="pitch-cents" id="pitchCents">--- cents</div>
-    </div>
+  </div>
   </div>
 
   <script>
@@ -304,13 +418,12 @@
     setupCanvas(specCanvas);
 
     // UI elements
-    const startBtn = document.getElementById('startBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const statusEl = document.getElementById('status');
+    const toggleBtn = document.getElementById('toggleBtn');
     const autoFitBtn = document.getElementById('autoFitBtn');
     const pitchNoteEl = document.getElementById('pitchNote');
     const pitchFreqEl = document.getElementById('pitchFreq');
     const pitchCentsEl = document.getElementById('pitchCents');
+    let isRunning = false;
 
     // Auto-fit toggle
     autoFitBtn.addEventListener('click', () => {
@@ -402,56 +515,60 @@
     document.addEventListener('mouseup', () => activeKnob = null);
     document.addEventListener('touchend', () => activeKnob = null);
 
-    // Start audio
-    startBtn.addEventListener('click', async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        if (audioContext.state === 'suspended') {
-          await audioContext.resume();
-        }
-        
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = fftSizes[currentFFTIndex];
-        analyser.smoothingTimeConstant = 0.8;
-        
-        bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
-        
-        microphone = audioContext.createMediaStreamSource(stream);
-        microphone.connect(analyser);
-        
-        window.currentStream = stream;
-        
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-        statusEl.textContent = 'ACTIVE';
-        statusEl.className = 'status active';
-        
-        visualize();
-      } catch (error) {
-        alert('Microphone error: ' + error.message);
-      }
-    });
+// Toggle audio
+    toggleBtn.addEventListener('click', async () => {
+      if (!isRunning) {
+        // Start audio
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Stop audio
-    stopBtn.addEventListener('click', () => {
-      if (animationId) cancelAnimationFrame(animationId);
-      if (microphone) microphone.disconnect();
-      if (window.currentStream) {
-        window.currentStream.getTracks().forEach(track => track.stop());
-        window.currentStream = null;
+          if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+          }
+
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = fftSizes[currentFFTIndex];
+          analyser.smoothingTimeConstant = 0.8;
+
+          bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+
+          microphone = audioContext.createMediaStreamSource(stream);
+          microphone.connect(analyser);
+
+          window.currentStream = stream;
+
+          isRunning = true;
+          toggleBtn.textContent = 'STOP';
+          toggleBtn.classList.add('active');
+
+          visualize();
+        } catch (error) {
+          alert('Microphone error: ' + error.message);
+        }
+      } else {
+        // Stop audio
+        if (animationId) cancelAnimationFrame(animationId);
+        if (microphone) microphone.disconnect();
+        if (window.currentStream) {
+          window.currentStream.getTracks().forEach(track => track.stop());
+          window.currentStream = null;
+        }
+        if (audioContext) audioContext.close();
+
+        isRunning = false;
+        toggleBtn.textContent = 'START';
+        toggleBtn.classList.remove('active');
+
+        pitchNoteEl.textContent = '--';
+        pitchFreqEl.textContent = '--- Hz';
+        pitchCentsEl.textContent = '--- cents';
+        pitchCentsEl.className = 'pitch-cents';
+
+        oscCtx.clearRect(0, 0, oscCanvas.width, oscCanvas.height);
+        specCtx.clearRect(0, 0, specCanvas.width, specCanvas.height);
       }
-      if (audioContext) audioContext.close();
-      
-      startBtn.disabled = false;
-      stopBtn.disabled = true;
-      statusEl.textContent = 'INACTIVE';
-      statusEl.className = 'status inactive';
-      
-      oscCtx.clearRect(0, 0, oscCanvas.width, oscCanvas.height);
-      specCtx.clearRect(0, 0, specCanvas.width, specCanvas.height);
     });
 
     // Visualization
