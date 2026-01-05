@@ -1,11 +1,448 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Welcome to ThePage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Audio Scope Analyzer</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      min-height: 100vh;
+      padding: 10px;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 1.5rem;
+      color: #00ff00;
+      text-shadow: 0 0 10px #00ff00;
+      letter-spacing: 2px;
+    }
+
+    .status {
+      text-align: center;
+      margin: 10px 0;
+      font-size: 14px;
+      padding: 8px;
+      border: 2px solid #333;
+      background: #000;
+      border-radius: 4px;
+    }
+
+    .status.active {
+      color: #00ff00;
+      border-color: #00ff00;
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+    }
+
+    .status.inactive {
+      color: #ff0000;
+      border-color: #333;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 14px;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+      border: 2px solid #00ff00;
+      background: #000;
+      color: #00ff00;
+      border-radius: 4px;
+      cursor: pointer;
+      text-transform: uppercase;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      background: #00ff00;
+      color: #000;
+    }
+
+    button:disabled {
+      border-color: #333;
+      color: #333;
+      cursor: not-allowed;
+    }
+
+    .scope-panel {
+      background: #2a2a2a;
+      border: 2px solid #444;
+      border-radius: 6px;
+      padding: 10px;
+      margin: 10px 0;
+    }
+
+    .scope-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    h2 {
+      font-size: 1rem;
+      color: #00ff00;
+      text-shadow: 0 0 5px #00ff00;
+      margin: 5px 0;
+    }
+
+    .knobs {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .knob-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .knob {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #555, #222);
+      border: 3px solid #000;
+      position: relative;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    .knob::after {
+      content: '';
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 15px;
+      background: #00ff00;
+      border-radius: 2px;
+      box-shadow: 0 0 5px #00ff00;
+    }
+
+    .knob-label {
+      font-size: 9px;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .knob-value {
+      font-size: 10px;
+      color: #00ff00;
+      font-weight: bold;
+    }
+
+    canvas {
+      width: 100%;
+      height: 200px;
+      display: block;
+      background: #000;
+      border: 2px solid #111;
+      border-radius: 4px;
+      touch-action: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <p>This is a simple webpage deployed on GitHub Pages.</p>
+  <h1>◈ AUDIO SCOPE ◈</h1>
+  
+  <div class="status inactive" id="status">INACTIVE</div>
+
+  <div class="controls">
+    <button id="startBtn">START</button>
+    <button id="stopBtn" disabled>STOP</button>
+  </div>
+
+  <div class="scope-panel">
+    <div class="scope-header">
+      <h2>◆ OSCILLOSCOPE</h2>
+      <div class="knobs">
+        <div class="knob-group">
+          <div class="knob" id="smoothingKnob" data-value="80"></div>
+          <div class="knob-label">Smooth</div>
+          <div class="knob-value" id="smoothingValue">0.80</div>
+        </div>
+      </div>
+    </div>
+    <canvas id="oscilloscope"></canvas>
+  </div>
+
+  <div class="scope-panel">
+    <div class="scope-header">
+      <h2>◆ SPECTRUM (FFT)</h2>
+      <div class="knobs">
+        <div class="knob-group">
+          <div class="knob" id="fftSizeKnob" data-value="2048"></div>
+          <div class="knob-label">FFT Size</div>
+          <div class="knob-value" id="fftSizeValue">2048</div>
+        </div>
+        <div class="knob-group">
+          <div class="knob" id="gainKnob" data-value="100"></div>
+          <div class="knob-label">Gain</div>
+          <div class="knob-value" id="gainValue">1.0x</div>
+        </div>
+      </div>
+    </div>
+    <canvas id="spectrum"></canvas>
+  </div>
+
+  <script>
+    // Audio components
+    let audioContext, analyser, microphone, dataArray, bufferLength, animationId;
+    let currentGain = 1.0;
+    const fftSizes = [512, 1024, 2048, 4096, 8192];
+    let currentFFTIndex = 2;
+
+    // Canvas setup
+    const oscCanvas = document.getElementById('oscilloscope');
+    const oscCtx = oscCanvas.getContext('2d');
+    const specCanvas = document.getElementById('spectrum');
+    const specCtx = specCanvas.getContext('2d');
+
+    // Set canvas resolution
+    function setupCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(dpr, dpr);
+      canvas.style.width = rect.width + 'px';
+      canvas.style.height = rect.height + 'px';
+    }
+
+    setupCanvas(oscCanvas);
+    setupCanvas(specCanvas);
+
+    // UI elements
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const statusEl = document.getElementById('status');
+
+    // Knob handling
+    let activeKnob = null;
+    let startY = 0;
+    let startValue = 0;
+
+    function handleStart(knob, clientY, e) {
+      activeKnob = knob;
+      startY = clientY;
+      startValue = parseInt(knob.dataset.value);
+      e.preventDefault();
+    }
+
+    function handleMove(clientY) {
+      if (!activeKnob) return;
+      
+      const delta = startY - clientY;
+      const knobId = activeKnob.id;
+      
+      if (knobId === 'fftSizeKnob') {
+        currentFFTIndex = Math.max(0, Math.min(4, Math.floor(startValue / 100 + delta / 50)));
+        const newValue = fftSizes[currentFFTIndex];
+        activeKnob.dataset.value = currentFFTIndex * 100;
+        document.getElementById('fftSizeValue').textContent = newValue;
+        updateRotation(activeKnob, currentFFTIndex / 4);
+        if (analyser) {
+          analyser.fftSize = newValue;
+          bufferLength = analyser.frequencyBinCount;
+          dataArray = new Uint8Array(bufferLength);
+        }
+      } else if (knobId === 'smoothingKnob') {
+        const newValue = Math.max(0, Math.min(99, startValue + delta));
+        activeKnob.dataset.value = newValue;
+        const smoothing = newValue / 100;
+        document.getElementById('smoothingValue').textContent = smoothing.toFixed(2);
+        updateRotation(activeKnob, smoothing);
+        if (analyser) analyser.smoothingTimeConstant = smoothing;
+      } else if (knobId === 'gainKnob') {
+        const newValue = Math.max(10, Math.min(300, startValue + delta * 2));
+        activeKnob.dataset.value = newValue;
+        currentGain = newValue / 100;
+        document.getElementById('gainValue').textContent = currentGain.toFixed(1) + 'x';
+        updateRotation(activeKnob, (newValue - 10) / 290);
+      }
+    }
+
+    function updateRotation(knob, value) {
+      const rotation = value * 270 - 135;
+      knob.style.transform = `rotate(${rotation}deg)`;
+    }
+
+    // Initialize knobs
+    document.querySelectorAll('.knob').forEach(knob => {
+      knob.addEventListener('mousedown', e => handleStart(knob, e.clientY, e));
+      knob.addEventListener('touchstart', e => handleStart(knob, e.touches[0].clientY, e), { passive: false });
+    });
+
+    document.addEventListener('mousemove', e => handleMove(e.clientY));
+    document.addEventListener('touchmove', e => { if (activeKnob) handleMove(e.touches[0].clientY); }, { passive: false });
+    document.addEventListener('mouseup', () => activeKnob = null);
+    document.addEventListener('touchend', () => activeKnob = null);
+
+    // Start audio
+    startBtn.addEventListener('click', async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = fftSizes[currentFFTIndex];
+        analyser.smoothingTimeConstant = 0.8;
+        
+        bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        
+        microphone = audioContext.createMediaStreamSource(stream);
+        microphone.connect(analyser);
+        
+        window.currentStream = stream;
+        
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+        statusEl.textContent = 'ACTIVE';
+        statusEl.className = 'status active';
+        
+        visualize();
+      } catch (error) {
+        alert('Microphone error: ' + error.message);
+      }
+    });
+
+    // Stop audio
+    stopBtn.addEventListener('click', () => {
+      if (animationId) cancelAnimationFrame(animationId);
+      if (microphone) microphone.disconnect();
+      if (window.currentStream) {
+        window.currentStream.getTracks().forEach(track => track.stop());
+        window.currentStream = null;
+      }
+      if (audioContext) audioContext.close();
+      
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      statusEl.textContent = 'INACTIVE';
+      statusEl.className = 'status inactive';
+      
+      oscCtx.clearRect(0, 0, oscCanvas.width, oscCanvas.height);
+      specCtx.clearRect(0, 0, specCanvas.width, specCanvas.height);
+    });
+
+    // Visualization
+    function visualize() {
+      animationId = requestAnimationFrame(visualize);
+      drawOscilloscope();
+      drawSpectrum();
+    }
+
+    function drawOscilloscope() {
+      analyser.getByteTimeDomainData(dataArray);
+      
+      const width = oscCanvas.width / (window.devicePixelRatio || 1);
+      const height = oscCanvas.height / (window.devicePixelRatio || 1);
+      
+      oscCtx.fillStyle = '#000';
+      oscCtx.fillRect(0, 0, width, height);
+      
+      // Grid
+      oscCtx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+      oscCtx.lineWidth = 1;
+      for (let i = 0; i <= 10; i++) {
+        const y = (i / 10) * height;
+        oscCtx.beginPath();
+        oscCtx.moveTo(0, y);
+        oscCtx.lineTo(width, y);
+        oscCtx.stroke();
+      }
+      
+      // Waveform
+      oscCtx.lineWidth = 2;
+      oscCtx.strokeStyle = '#0f0';
+      oscCtx.shadowBlur = 10;
+      oscCtx.shadowColor = '#0f0';
+      oscCtx.beginPath();
+      
+      const sliceWidth = width / bufferLength;
+      let x = 0;
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const v = dataArray[i] / 128.0;
+        const y = v * height / 2;
+        
+        if (i === 0) oscCtx.moveTo(x, y);
+        else oscCtx.lineTo(x, y);
+        
+        x += sliceWidth;
+      }
+      
+      oscCtx.lineTo(width, height / 2);
+      oscCtx.stroke();
+      oscCtx.shadowBlur = 0;
+    }
+
+    function drawSpectrum() {
+      analyser.getByteFrequencyData(dataArray);
+      
+      const width = specCanvas.width / (window.devicePixelRatio || 1);
+      const height = specCanvas.height / (window.devicePixelRatio || 1);
+      
+      specCtx.fillStyle = '#000';
+      specCtx.fillRect(0, 0, width, height);
+      
+      // Grid
+      specCtx.strokeStyle = 'rgba(0, 255, 0, 0.1)';
+      specCtx.lineWidth = 1;
+      for (let i = 0; i <= 10; i++) {
+        const y = (i / 10) * height;
+        specCtx.beginPath();
+        specCtx.moveTo(0, y);
+        specCtx.lineTo(width, y);
+        specCtx.stroke();
+      }
+      
+      const barWidth = (width / bufferLength) * 2.5;
+      let x = 0;
+      
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * height * currentGain;
+        const intensity = dataArray[i] / 255;
+        
+        specCtx.fillStyle = `rgb(0, ${Math.floor(255 * intensity)}, 0)`;
+        specCtx.shadowBlur = 5;
+        specCtx.shadowColor = '#0f0';
+        
+        specCtx.fillRect(x, height - barHeight, barWidth, barHeight);
+        x += barWidth + 1;
+      }
+      specCtx.shadowBlur = 0;
+    }
+  </script>
 </body>
 </html>
