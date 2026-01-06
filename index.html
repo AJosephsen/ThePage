@@ -192,6 +192,45 @@
       touch-action: none;
     }
 
+    #heatmap {
+      height: 200px;
+    }
+
+    .qr-code-container {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      background: #2a2a2a;
+      border: 2px solid #00ff00;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 0 20px rgba(0,255,0,0.4);
+      z-index: 1000;
+      display: none;
+    }
+
+    .qr-code-container h3 {
+      font-size: 0.75rem;
+      color: #00ff00;
+      text-align: center;
+      margin-bottom: 8px;
+      text-shadow: 0 0 5px #00ff00;
+    }
+
+    .qr-code-container img {
+      display: block;
+      background: white;
+      padding: 5px;
+      border-radius: 4px;
+    }
+
+    /* Show QR code only on desktop (wider screens) */
+    @media (min-width: 768px) {
+      .qr-code-container {
+        display: block;
+      }
+    }
+
     .pitch-display {
       display: flex;
       flex-direction: column;
@@ -387,6 +426,18 @@
   </div>
   </div>
 
+  <div class="scope-panel">
+    <div class="scope-header">
+      <h2>◆ FREQUENCY HEATMAP (LOGARITHMIC TIME)</h2>
+    </div>
+    <canvas id="heatmap"></canvas>
+  </div>
+
+  <div class="qr-code-container" id="qrContainer">
+    <h3>SCAN TO OPEN ON MOBILE</h3>
+    <img id="qrCode" alt="QR Code">
+  </div>
+
   <script>
     // Audio components
     let audioContext, analyser, microphone, dataArray, bufferLength, animationId;
@@ -401,6 +452,12 @@
     const oscCtx = oscCanvas.getContext('2d');
     const specCanvas = document.getElementById('spectrum');
     const specCtx = specCanvas.getContext('2d');
+    const heatmapCanvas = document.getElementById('heatmap');
+    const heatmapCtx = heatmapCanvas.getContext('2d');
+
+    // Heatmap data storage
+    const heatmapHistory = [];
+    const MAX_HISTORY_TIME = 600000; // 10 minutes in milliseconds
 
     // Set canvas resolution
     function setupCanvas(canvas) {
@@ -416,6 +473,18 @@
 
     setupCanvas(oscCanvas);
     setupCanvas(specCanvas);
+    setupCanvas(heatmapCanvas);
+
+    // Generate QR code for current URL
+    function generateQRCode() {
+      const currentUrl = window.location.href;
+      const qrCodeImg = document.getElementById('qrCode');
+      // Use QR Server API to generate QR code
+      qrCodeImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(currentUrl)}`;
+    }
+
+    // Generate QR code on page load
+    generateQRCode();
 
     // UI elements
     const toggleBtn = document.getElementById('toggleBtn');
@@ -576,6 +645,7 @@
       animationId = requestAnimationFrame(visualize);
       drawOscilloscope();
       drawSpectrum();
+      drawHeatmap();
     }
 
     function drawOscilloscope() {
@@ -709,6 +779,168 @@
         x += barWidth + 1;
       }
       specCtx.shadowBlur = 0;
+    }
+
+    function drawHeatmap() {
+      const now = Date.now();
+      
+      // Get current frequency data
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Store frequency snapshot with timestamp
+      heatmapHistory.push({
+        timestamp: now,
+        data: new Uint8Array(dataArray)
+      });
+      
+      // Remove old data beyond MAX_HISTORY_TIME
+      while (heatmapHistory.length > 0 && now - heatmapHistory[0].timestamp > MAX_HISTORY_TIME) {
+        heatmapHistory.shift();
+      }
+      
+      const width = heatmapCanvas.width / (window.devicePixelRatio || 1);
+      const height = heatmapCanvas.height / (window.devicePixelRatio || 1);
+      
+      heatmapCtx.fillStyle = '#000';
+      heatmapCtx.fillRect(0, 0, width, height);
+      
+      if (heatmapHistory.length === 0) return;
+      
+      const nyquist = audioContext.sampleRate / 2;
+      const signalThreshold = 30; // Intensity threshold to consider as active signal
+      
+      // Find the maximum frequency with significant signal across recent history
+      let maxActiveFreqBin = 0;
+      const recentHistoryCount = Math.min(30, heatmapHistory.length); // Check last 30 frames (~0.5 sec)
+      
+      for (let i = heatmapHistory.length - recentHistoryCount; i < heatmapHistory.length; i++) {
+        const snapshot = heatmapHistory[i];
+        for (let j = 0; j < bufferLength; j++) {
+          if (snapshot.data[j] > signalThreshold && j > maxActiveFreqBin) {
+            maxActiveFreqBin = j;
+          }
+        }
+      }
+      
+      // Calculate max frequency and add 20% headroom
+      let maxDisplayFreq;
+      if (maxActiveFreqBin === 0) {
+        maxDisplayFreq = nyquist; // No signal, show full range
+      } else {
+        const detectedMaxFreq = (maxActiveFreqBin * nyquist) / bufferLength;
+        maxDisplayFreq = Math.min(nyquist, detectedMaxFreq * 1.2); // Add 20% headroom
+        // Ensure minimum display range of 200Hz
+        maxDisplayFreq = Math.max(200, maxDisplayFreq);
+      }
+      
+      const maxDisplayBin = (maxDisplayFreq / nyquist) * bufferLength;
+      
+      // Logarithmic time scale where last minute = half the display
+      const c = 1;
+      const k = width / (2 * Math.log(61));
+      
+      function ageToX(ageSeconds) {
+        return width - k * Math.log(ageSeconds + c);
+      }
+      
+      const oldestAge = (now - heatmapHistory[0].timestamp) / 1000;
+      
+      // Draw each time slice
+      for (let i = 0; i < heatmapHistory.length; i++) {
+        const snapshot = heatmapHistory[i];
+        const ageSeconds = (now - snapshot.timestamp) / 1000;
+        const x = ageToX(ageSeconds);
+        
+        // Calculate width for this slice (distance to next slice or edge)
+        let sliceWidth;
+        if (i < heatmapHistory.length - 1) {
+          const nextAge = (now - heatmapHistory[i + 1].timestamp) / 1000;
+          const nextX = ageToX(nextAge);
+          sliceWidth = Math.abs(nextX - x);
+        } else {
+          sliceWidth = width - x;
+        }
+        
+        sliceWidth = Math.max(1, sliceWidth); // At least 1 pixel
+        
+        // Draw frequency bins vertically (only up to maxDisplayBin)
+        for (let j = 0; j < maxDisplayBin; j++) {
+          const intensity = snapshot.data[j] / 255;
+          const frequency = (j * nyquist) / bufferLength;
+          
+          // Skip very low frequencies for clarity
+          if (frequency < 20) continue;
+          
+          // Y position: lower frequencies at bottom, higher at top
+          // Scale based on maxDisplayBin instead of bufferLength
+          const y = height - (j / maxDisplayBin) * height;
+          const freqBinHeight = height / maxDisplayBin;
+          
+          // Color based on intensity: black -> green -> yellow -> red
+          let r, g, b;
+          if (intensity < 0.5) {
+            // Black to green
+            r = 0;
+            g = Math.floor(intensity * 2 * 255);
+            b = 0;
+          } else {
+            // Green to yellow to red
+            r = Math.floor((intensity - 0.5) * 2 * 255);
+            g = 255;
+            b = 0;
+          }
+          
+          heatmapCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+          heatmapCtx.fillRect(x, y, sliceWidth, freqBinHeight);
+        }
+      }
+      
+      // Draw time grid and labels
+      heatmapCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      heatmapCtx.lineWidth = 1;
+      heatmapCtx.font = '10px Courier New';
+      heatmapCtx.fillStyle = '#888';
+      
+      // Time markers: now, 15s, 30s, 1m, 2m, 5m, 10m
+      const timeMarkers = [0, 15, 30, 60, 120, 300, 600];
+      
+      for (const seconds of timeMarkers) {
+        if (oldestAge < seconds) continue; // Don't draw if we don't have data that old
+        
+        const x = ageToX(seconds);
+        
+        heatmapCtx.beginPath();
+        heatmapCtx.moveTo(x, 0);
+        heatmapCtx.lineTo(x, height);
+        heatmapCtx.stroke();
+        
+        // Label
+        let label;
+        if (seconds === 0) label = 'now';
+        else if (seconds < 60) label = seconds + 's';
+        else label = (seconds / 60) + 'm';
+        
+        heatmapCtx.fillText(label, x + 2, 12);
+      }
+      
+      // Draw frequency grid and labels
+      const freqMarkers = [100, 500, 1000, 2000, 5000, 10000];
+      
+      for (const freq of freqMarkers) {
+        if (freq > nyquist) continue;
+        
+        const binIndex = (freq / nyquist) * bufferLength;
+        const y = height - (binIndex / bufferLength) * height;
+        
+        heatmapCtx.beginPath();
+        heatmapCtx.moveTo(0, y);
+        heatmapCtx.lineTo(width, y);
+        heatmapCtx.stroke();
+        
+        // Label
+        let label = freq >= 1000 ? (freq / 1000) + 'kHz' : freq + 'Hz';
+        heatmapCtx.fillText(label, 2, y - 2);
+      }
     }
   </script>
 </body>
